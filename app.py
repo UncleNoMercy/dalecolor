@@ -267,6 +267,7 @@ lista = [c for c, _ in colores]
 
 st.markdown('<h2 class="seccion">Colores que se confunden</h2>', unsafe_allow_html=True)
 alertas = analizar_colores(lista) if len(lista) >= 2 else []
+alertas.sort(key=lambda a: a[4] / a[3])   # primero las más graves (la diferencia que más baja)
 if not alertas:
     st.markdown('<p class="consejo">✓ No encontramos colores que se confundan con daltonismo.</p>',
                 unsafe_allow_html=True)

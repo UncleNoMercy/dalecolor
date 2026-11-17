@@ -147,22 +147,41 @@ def distancia(rgb1, rgb2):
     return suma ** 0.5
 
 
-def colores_principales(imagen, cantidad=6, porcentaje_minimo=1.0):
+def colores_principales(imagen, cantidad=8, porcentaje_minimo=0.5, distancia_grupo=40):
     """
     Encuentra los colores que más se repiten en la imagen (fondos, botones).
-    Ignora los colores que ocupan menos del 'porcentaje_minimo' de los píxeles,
-    como los bordes suavizados de las letras.
+
+    En una captura real, un mismo color aparece con pequeñas variaciones
+    (por ejemplo, el blanco como 255, 254, 253...) por la compresión, las
+    sombras y los bordes suavizados. Por eso primero AGRUPAMOS los colores
+    parecidos y tomamos el color promedio de cada grupo.
+
+    Pasos:
+      1. Se achica la imagen para que el cálculo sea rápido.
+      2. Pillow agrupa los píxeles en 16 colores (método "median cut").
+      3. Se juntan los grupos cuya distancia entre vectores es menor que
+         'distancia_grupo' (son el "mismo" color para una persona).
+      4. Se ignoran los grupos que ocupan menos del 'porcentaje_minimo'.
     """
-    pixeles = imagen.reshape(-1, 3).astype(int)
-    colores, conteos = np.unique(pixeles, axis=0, return_counts=True)
-    orden = np.argsort(conteos)[::-1]           # de más a menos frecuente
-    total = len(pixeles)
-    resultado = []
-    for k in orden[:cantidad]:
-        porcentaje = 100 * conteos[k] / total
-        if porcentaje >= porcentaje_minimo:
-            resultado.append((tuple(int(v) for v in colores[k]), porcentaje))
-    return resultado
+    img = Image.fromarray(np.clip(imagen, 0, 255).astype(np.uint8))
+    img.thumbnail((500, 500))                                   # paso 1
+    agrupada = img.quantize(colors=16, method=Image.Quantize.MEDIANCUT,
+                            dither=Image.Dither.NONE)           # paso 2
+    paleta = agrupada.getpalette()
+    total = img.width * img.height
+    grupos = []                                                 # [color, porcentaje]
+    for conteo, indice in sorted(agrupada.getcolors(), reverse=True):
+        color = tuple(paleta[3 * indice: 3 * indice + 3])
+        porcentaje = 100 * conteo / total
+        for g in grupos:                                        # paso 3
+            if distancia(g[0], color) < distancia_grupo:
+                g[1] += porcentaje
+                break
+        else:
+            grupos.append([color, porcentaje])
+    resultado = [(tuple(int(v) for v in c), p) for c, p in grupos if p >= porcentaje_minimo]  # paso 4
+    resultado.sort(key=lambda x: x[1], reverse=True)
+    return resultado[:cantidad]
 
 
 def analizar_colores(colores):
