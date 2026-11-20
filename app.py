@@ -265,12 +265,26 @@ c2.image(simulaciones[elegido], caption=f"Con {TIPOS[elegido][0].lower()}", widt
 
 lista = [c for c, _ in colores]
 
+# ---------------- Cómo cambia cada color (un color que cambia NO es lo mismo que dos colores que se confunden)
+st.markdown('<h2 class="seccion">Cómo cambian tus colores</h2>', unsafe_allow_html=True)
+st.markdown('<p class="ayuda">Así se ve cada color principal de tu captura con cada tipo de daltonismo. '
+            'Que un color cambie no es un problema por sí solo: lo importante es que siga '
+            'distinguiéndose de los demás.</p>', unsafe_allow_html=True)
+if lista:
+    cab = "".join(f"<th>{TIPOS[k][0]}</th>" for k in MATRICES)
+    filas_cambio = ""
+    for c, pct in colores:
+        celdas = "".join(f"<td>{sw(simular_un_color(c, M))}{simular_un_color(c, M)}</td>" for M in MATRICES.values())
+        filas_cambio += f"<tr><td>{sw(c)}{c}</td><td class='num'>{coma(pct, 1)}&nbsp;%</td>{celdas}</tr>"
+    st.markdown('<div style="overflow-x:auto"><table class="dc"><tr><th>Visión normal</th><th>Ocupa</th>'
+                + cab + "</tr>" + filas_cambio + "</table></div>", unsafe_allow_html=True)
+
 st.markdown('<h2 class="seccion">Colores que se confunden</h2>', unsafe_allow_html=True)
 alertas = analizar_colores(lista) if len(lista) >= 2 else []
 alertas.sort(key=lambda a: a[4] / a[3])   # primero las más graves (la diferencia que más baja)
 if not alertas:
-    st.markdown('<p class="consejo">✓ No encontramos colores que se confundan con daltonismo.</p>',
-                unsafe_allow_html=True)
+    st.markdown('<p class="consejo">✓ No encontramos colores que se confundan con daltonismo. '
+                'Aunque tus colores cambien, siguen distinguiéndose entre sí.</p>', unsafe_allow_html=True)
 for col1, col2, nombre, d_normal, d_sim in alertas:
     M = MATRICES[nombre]
     s1, s2 = simular_un_color(col1, M), simular_un_color(col2, M)
